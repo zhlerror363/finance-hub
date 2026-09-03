@@ -1,0 +1,20 @@
+# 运行时数据 & 敏感文件（不入库：真实账本、演示库、AI key）
+data/*
+!data/.gitkeep
+
+# 依赖（本项目零依赖，为保险忽略）
+node_modules/
+
+# 设计文档（主人视为不可对外分享的资产，不入库）
+docs/
+
+# 便携版打包产物（体积大，不入库）
+dist/
+
+# 运行时文件
+server.log
+server.pid
+
+# 系统
+.DS_Store
+Thumbs.db

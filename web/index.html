@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>财务小管家</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <!-- v0.2 第七轮：小类改为 select，移除独立 datalist -->
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">💰</span>
+        <div>
+          <h1>财务小管家</h1>
+          <p class="sub">记录与分析，让每分钱都找到价值。</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="eyeBtn" class="eye-btn" title="隐藏/显示金额">👁️</button>
+        <div class="toggle">
+          <button id="themeToggle" title="切换主题">🌙</button>
+        </div>
+        <label class="month-pick">
+          <span>月份</span>
+          <input type="month" id="monthPicker" />
+        </label>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button data-tab="ledger" class="active">记账</button>
+      <button data-tab="dashboard">看板</button>
+      <button data-tab="vaults">资产</button>
+      <button data-tab="settings">设置</button>
+    </nav>
+
+    <main>
+      <!-- 记账 -->
+      <section id="tab-ledger" class="tab active">
+        <div class="card form-card">
+          <div class="form-card-head">
+            <h2>记一笔</h2>
+            <button id="aiParseBtn" class="btn ghost small" title="粘贴文本，AI 自动识别记账">✨ AI 智能记账</button>
+          </div>
+          <form id="txForm" class="tx-form">
+            <div class="field">
+              <label>类型</label>
+              <div class="type-toggle">
+                <label class="tt"><input type="radio" name="txType" value="expense" checked /> 支出</label>
+                <label class="tt"><input type="radio" name="txType" value="income" /> 收入</label>
+              </div>
+            </div>
+            <div class="field">
+              <label id="txGrpLabel">必要？ <span class="info-dot" data-tip="title:如何区分是否必要？|content:同样是饮料，在很渴的时候就是必要，在嘴馋的时候就是不必要">ⓘ</span></label>
+              <div class="type-toggle" id="txGrpRadios">
+                <label class="tt"><input type="radio" name="txGrp" value="必要" /> 必要</label>
+                <label class="tt"><input type="radio" name="txGrp" value="非必要" checked /> 非必要</label>
+              </div>
+            </div>
+            <div class="field">
+              <label>日期</label>
+              <input type="date" id="txDate" required />
+            </div>
+            <div class="field">
+              <label>金额（元）</label>
+              <input type="number" id="txAmount" min="0" step="0.01" required placeholder="0.00" />
+            </div>
+            <div class="field">
+              <label>类别</label>
+              <select id="txCategory" required></select>
+            </div>
+            <div class="field">
+              <label>小类 <span class="info-dot" data-tip="title:写了的效果|content:比如正餐到底是早、午还是晚，可以在设置里修改，用于精确分析">ⓘ</span></label>
+              <select id="txNote" class="note-select"></select>
+              <input type="text" id="txNoteCustom" class="note-custom" placeholder="输入新小类名" style="display:none" />
+            </div>
+            <div class="field">
+              <label>交易方式</label>
+              <select id="txChannel"></select>
+            </div>
+            <div class="field">
+              <label>分摊 <span class="info-dot" data-tip="title:分摊怎么用？|content:比如前面写的是聚餐的总金额，写上分摊人数就会自动计算自己的金额">ⓘ</span></label>
+              <input type="number" id="txShare" min="1" step="1" placeholder="默认为1" />
+            </div>
+            <div class="field">
+              <label>备注 <span class="info-dot" data-tip="title:备注与「小类」独立|content:备注只是给你自己看的文字标记（如「中秋回家火车票」），不会出现在分类分析里">ⓘ</span></label>
+              <textarea id="txRemark" placeholder="选填" rows="2"></textarea>
+            </div>
+            <div class="note-ctrl">
+              <div class="field field-switch compact">
+                <span>是否计入物件</span>
+                <label class="switch"><input type="checkbox" id="txAsItem" /><span class="slider"></span></label>
+              </div>
+              <button type="submit" class="btn primary save-btn">保存</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card list-card">
+          <div class="list-head">
+            <h2 id="ledgerTitle">本月账目</h2>
+            <div class="ledger-filter">
+              <select id="ledgerFilter"><option value="">全部</option></select>
+              <button id="backToday" class="btn ghost">回到本月</button>
+            </div>
+          </div>
+          <div id="txList" class="tx-list"></div>
+        </div>
+      </section>
+
+      <!-- 资产 -->
+      <section id="tab-vaults" class="tab">
+        <div class="card">
+          <div class="list-head">
+            <h2>金库</h2>
+            <div class="vault-head-actions">
+              <span class="info-dot" data-tip="title:什么时候用这个功能？|content:平时记账不选时默认记录到未分类，可能导致资产错乱。可定期修改自己各资产的金额，然后重置未分类，就可恢复正确的总资产">ⓘ</span>
+              <button id="resetUncat" class="btn ghost">重置未分类资金</button>
+              <button id="addVault" class="btn ghost">+ 添加资金</button>
+            </div>
+          </div>
+          <div id="vaultStats" class="stat-row-2"></div>
+          <div id="vaultGrid" class="vault-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="list-head">
+            <h2>物件</h2>
+            <button id="addItem" class="btn ghost">+ 添加物件</button>
+          </div>
+          <div class="stat-row-3" id="itemStats"></div>
+          <div id="itemGrid" class="vault-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="list-head">
+            <h2>远期 <span class="info-dot" data-tip="title:什么是远期？|content:未来日期的账（如定金、年货预订）不会计入当月看板，但会在此提醒你不会忘。点泡泡可看明细，可一键转已入账">ⓘ</span></h2>
+          </div>
+          <div id="futureStats" class="stat-row-2"></div>
+          <div id="futureGrid" class="vault-grid"></div>
+        </div>
+      </section>
+
+      <!-- 看板 -->
+      <section id="tab-dashboard" class="tab">
+        <div class="stat-grid" id="statGrid"></div>
+
+        <div class="card chart-card full">
+          <div class="form-card-head">
+            <h2>✨ AI 消费洞察</h2>
+            <button id="aiInsightBtn" class="btn ghost small">生成洞察</button>
+          </div>
+          <div id="aiInsightBox" class="ai-insight-box">点击「生成洞察」，AI 分析你最近几个月的消费习惯。</div>
+        </div>
+
+        <div class="card chart-card full">
+          <h2>支出分类</h2>
+          <div class="cat-layout">
+            <div class="cat-col-left" id="catLegendList"></div>
+            <div class="cat-col-mid"><div id="catChart" class="chart-box big"></div></div>
+            <div class="cat-col-right"><div id="drillPop" class="drill-pop-static"><div class="drill-empty">悬停看细分<br>点击固定</div></div></div>
+          </div>
+        </div>
+
+        <div class="chart-row">
+          <div class="card chart-card">
+            <h2>收入分类</h2>
+            <div id="incCatChart" class="chart-box"></div>
+          </div>
+          <div class="card chart-card">
+            <h2>必要支出 vs 非必要支出</h2>
+            <div id="groupChart" class="chart-box"></div>
+          </div>
+        </div>
+
+        <div class="card chart-card full">
+          <div class="list-head">
+            <h2>支出 / 收入趋势</h2>
+            <div class="trend-toolbar" id="trendToolbar">
+              <button data-unit="day" data-n="30" class="seg-btn">近30天</button>
+              <button data-unit="month" data-n="12" class="seg-btn active">近12月</button>
+              <label class="trend-custom"><span>近</span><input type="number" id="trendNum" min="1" max="120" placeholder="0~30" /><select id="trendUnit"><option value="day">天</option><option value="week">周</option><option value="quarter">季</option><option value="year">年</option></select></label>
+            </div>
+          </div>
+          <h3 class="trend-title">支出趋势</h3>
+          <div id="growthBar" class="growth-bar"></div>
+          <div id="trendChart" class="chart-box tall"></div>
+          <h3 class="trend-title">收入趋势</h3>
+          <div id="incGrowthBar" class="growth-bar"></div>
+          <div id="incTrendChart" class="chart-box tall"></div>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section id="tab-settings" class="tab">
+        <div class="card" id="privacyCard">
+          <h2>隐私</h2>
+
+          <div class="privacy-row">
+            <!-- 账户区：放在隐私里的第一行（与下面 item 同水平的间距） -->
+            <div class="account-box privacy-item">
+              <div>
+                <strong>当前账户</strong>
+                <p id="accountInfo" class="account-info">—</p>
+              </div>
+              <div class="account-actions">
+                <label class="month-pick" id="userSelectWrap" style="display:none">
+                  <span>查看</span>
+                  <select id="userSelect"></select>
+                </label>
+                <button id="logoutBtn" class="btn ghost">退出登录</button>
+              </div>
+            </div>
+
+            <div class="privacy-item">
+              <div>
+                <strong>隐藏金额</strong>
+                <p>开启后只显示百分比，具体金额、趋势坐标轴金额不可见。</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="hideAmounts" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="privacy-item">
+              <div>
+                <strong>金额查看密码</strong>
+                <p>设置 4 位或 6 位数字密码；开启隐藏后，想看金额需输入密码。</p>
+              </div>
+              <div class="pwd-panel">
+                <button id="lockBtn" class="btn ghost">🔒 已锁定</button>
+                <button id="pwdSet" class="btn ghost">设置密码</button>
+                <button id="pwdClear" class="btn ghost">清除密码</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="catCard">
+          <h2>类别管理</h2>
+          <p class="hint">大类下可直接添加小类；记账时的「备注」可从小类里选；点大类名字可重命名。</p>
+          <form id="catForm" class="cat-add-form">
+            <input type="text" id="catName" placeholder="新类别名" required />
+            <select id="catKind">
+              <option value="expense">支出</option>
+              <option value="income">收入</option>
+            </select>
+            <input type="color" id="catColor" value="#7aa2c4" />
+            <button type="button" id="catRandomColor" class="btn ghost" title="随机生成一个未用过的颜色">随机颜色</button>
+            <button type="submit" class="btn primary">添加</button>
+          </form>
+          <div id="catList" class="cat-list"></div>
+        </div>
+
+        <div class="card" id="dataCard">
+          <h2>数据</h2>
+          <p class="hint">备份是完整数据库快照；导出交易为 CSV，可用 Excel 打开。</p>
+          <div class="pwd-panel">
+            <button id="btnBackup" class="btn ghost">一键备份（下载 .db）</button>
+            <button id="btnExport" class="btn ghost">导出交易 CSV</button>
+          </div>
+        </div>
+
+        <div class="card" id="adminUsersCard" style="display:none">
+          <h2>用户与额度</h2>
+          <p class="hint">给每位用户分配 AI 调用次数（智能记账 / 消费洞察各算一次）。</p>
+          <div id="adminUsersList" class="admin-users-list"></div>
+        </div>
+
+        <div class="card" id="demoCard">
+          <h2>模拟数据</h2>
+          <p class="hint">用演示数据体验产品功能，不污染你的真实账目。切换后页面会刷新。</p>
+          <div class="pwd-panel">
+            <button id="demoEnterBtn" class="btn ghost">进入模拟模式</button>
+            <button id="demoExitBtn" class="btn primary">退出模拟模式</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="app-footer">
+      <span>财务小管家</span> · <span>如有疑问或合作，请联系</span> <a href="mailto:harnessmanager@163.com" class="footer-email">harnessmanager@163.com</a>
+    </footer>
+  </div>
+
+  <!-- 编辑弹窗 -->
+  <div id="editModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>编辑这笔账</h2>
+      <form id="editForm" class="tx-form">
+        <!-- v0.2 第五轮：编辑弹窗去掉「类型」切换（类型来自原账目，不可改）；去掉「必要/非必要」行（备注用更多空间） -->
+        <div class="field"><label>日期</label><input type="date" id="editDate" required /></div>
+        <div class="field"><label>金额（元）</label><input type="number" id="editAmount" min="0" step="0.01" required /></div>
+        <div class="field"><label>类别</label><select id="editCategory" required></select></div>
+        <div class="field"><label>小类 <span class="info-dot" data-tip="title:写了的效果|content:比如正餐到底是早、午还是晚，可以在设置里修改，用于精确分析">ⓘ</span></label><select id="editNote" class="note-select"></select><input type="text" id="editNoteCustom" class="note-custom" placeholder="输入新小类名" style="display:none" /></div>
+        <div class="field"><label>交易方式</label><select id="editChannel"></select></div>
+        <div class="field"><label>分摊 <span class="info-dot" data-tip="title:分摊怎么用？|content:比如前面写的是聚餐的总金额，写上分摊人数就会自动计算自己的金额">ⓘ</span></label><input type="number" id="editShare" min="1" step="1" placeholder="默认为1" /></div>
+        <div class="field edit-remark-field"><label>备注 <span class="info-dot" data-tip="title:备注与「小类」独立|content:备注只是给你自己看的文字标记，不会出现在分类分析里">ⓘ</span></label><textarea id="editRemark" placeholder="选填" rows="2"></textarea></div>
+        <div class="modal-actions">
+          <button type="button" id="editDel" class="btn danger">删除</button>
+          <button type="button" id="editCancel" class="btn ghost">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 密码弹窗 -->
+  <div id="pwdModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2>输入金额查看密码</h2>
+      <form id="pwdForm">
+        <input type="password" id="pwdCheck" maxlength="6" placeholder="4或6位数字" autocomplete="off" />
+        <div class="modal-actions">
+          <button type="button" id="pwdCancel" class="btn ghost">取消</button>
+          <button type="submit" class="btn primary">确定</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 金库 添加/编辑弹窗 -->
+  <div id="vaultModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2 id="vaultModalTitle">资金账户</h2>
+      <form id="vaultForm">
+        <label>账户名称</label>
+        <input type="text" id="vaultName" required />
+        <label>当前金额（元）</label>
+        <input type="number" id="vaultBalance" min="0" step="0.01" />
+        <div class="modal-actions">
+          <button type="button" id="vaultCancel" class="btn ghost">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 密码 设置/清除弹窗 -->
+  <div id="pwdManageModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2 id="pwdManageTitle">金额查看密码</h2>
+      <form id="pwdManageForm">
+        <div id="pwdNewWrap">
+          <label>新密码</label>
+          <input type="password" id="pwdNew" maxlength="6" placeholder="4 或 6 位数字" autocomplete="off" />
+        </div>
+        <div id="pwdCurrentWrap">
+          <label>当前密码</label>
+          <input type="password" id="pwdCurrent" maxlength="6" placeholder="输入当前密码以清除" autocomplete="off" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="pwdManageCancel" class="btn ghost">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 物件 添加弹窗 -->
+  <div id="itemModal" class="modal-overlay hidden">
+    <div class="modal wider">
+      <h2 id="itemModalTitle">添加物件</h2>
+      <form id="itemForm">
+        <div class="item-3col">
+          <div class="item-col">
+            <div class="field"><label>名称</label><input type="text" id="itemName" placeholder="如 手机 / 电脑 / 耳机" required /></div>
+            <div class="field"><label>金额（元）</label><input type="number" id="itemAmount" min="0" step="0.01" required /></div>
+            <div class="field"><label>购置日期</label><input type="date" id="itemDate" required /></div>
+          </div>
+          <div class="item-col">
+            <div class="field">
+              <label class="item-event-label">产生效益（-）</label>
+              <div id="itemGainList" class="item-event-list"></div>
+              <div class="item-event-add">
+                <input type="text" id="itemGainNote" placeholder="名称" />
+                <input type="number" id="itemGainAmount" placeholder="金额" min="0" step="0.01" />
+                <button type="button" id="itemGainAdd" class="ie-add-btn">+ 产生效益</button>
+              </div>
+            </div>
+          </div>
+          <div class="item-col">
+            <div class="field">
+              <label class="item-event-label">额外投入（+）</label>
+              <div id="itemInvestList" class="item-event-list"></div>
+              <div class="item-event-add">
+                <input type="text" id="itemInvestNote" placeholder="名称" />
+                <input type="number" id="itemInvestAmount" placeholder="金额" min="0" step="0.01" />
+                <button type="button" id="itemInvestAdd" class="ie-add-btn">+ 额外投入</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="itemCancel" class="btn ghost">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- (v0.2 第六轮：itemEventModal 已合并到 itemModal 内，不再独立) -->
+
+  <!-- 类别 弹窗（重命名大类 / 加小类 / 管理小类）-->
+  <div id="catModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2 id="catModalTitle">类别</h2>
+      <form id="catModalForm">
+        <label id="catModalLabel">名称</label>
+        <input type="text" id="catModalName" required />
+        <div id="catColorWrap">
+          <label>颜色</label>
+          <div class="cat-color-row"><input type="color" id="catModalColor" value="#98a6bd" /><button type="button" id="catModalRandomColor" class="btn ghost">随机颜色</button></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="catModalDel" class="btn danger hidden">删除</button>
+          <button type="button" id="catModalCancel" class="btn ghost">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 金库 变动详情弹窗 -->
+  <div id="vaultDetailModal" class="modal-overlay hidden">
+    <div class="modal wide ledger">
+      <div class="ledger-head">
+        <h2 id="vaultDetailTitle">变动明细</h2>
+        <label class="month-pick"><span>月份</span><input type="month" id="vaultDetailMonth" /></label>
+      </div>
+      <div id="vaultDetailList" class="va-list"></div>
+      <div class="modal-actions">
+        <button type="button" id="vaultDetailClose" class="btn ghost">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 远期详情弹窗（未入账 / 待支出 共用：按 type 切换） -->
+  <div id="futureDetailModal" class="modal-overlay hidden">
+    <div class="modal ledger">
+      <div class="ledger-head">
+        <h2 id="futureDetailTitle">远期明细</h2>
+        <label class="month-pick"><span>月份</span><input type="month" id="futureDetailMonth" /></label>
+      </div>
+      <div id="futureDetailList" class="va-list"></div>
+      <div class="modal-actions">
+        <button type="button" id="futureDetailClose" class="btn ghost">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 金库 编辑+删除 合并弹窗 -->
+  <div id="vaultEditModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2 id="vaultEditTitle">资金账户</h2>
+      <form id="vaultEditForm">
+        <label>账户名称</label>
+        <input type="text" id="vaultEditName" required />
+        <label>当前金额（元）</label>
+        <input type="number" id="vaultEditBalance" min="0" step="0.01" />
+        <div class="modal-actions">
+          <button type="button" id="vaultEditDel" class="btn danger">删除</button>
+          <button type="button" id="vaultEditCancel" class="btn ghost">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 类别 删除确认弹窗（独立） -->
+  <div id="catDeleteModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2>删除大类</h2>
+      <p class="confirm-msg" id="catDeleteMsg"></p>
+      <div class="modal-actions">
+        <button type="button" id="catDeleteCancel" class="btn ghost">取消</button>
+        <button type="button" id="catDeleteOk" class="btn danger">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 大类下的小类管理弹窗 -->
+  <div id="kidsModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="kidsModalTitle">管理小类</h2>
+      <div id="kidsList" class="kids-list"></div>
+      <div class="modal-actions">
+        <button type="button" id="kidsClose" class="btn ghost">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用确认弹窗 -->
+  <div id="confirmModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2 id="confirmTitle">确认</h2>
+      <p id="confirmMsg" class="confirm-msg"></p>
+      <div class="modal-actions">
+        <button type="button" id="confirmCancel" class="btn ghost">取消</button>
+        <button type="button" id="confirmOk" class="btn primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v3 多用户：登录 modal -->
+  <div id="loginModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2>登录 财务小管家</h2>
+      <form id="loginForm">
+        <label>用户名</label><input type="text" id="loginUsername" autocomplete="username" />
+        <label>密码</label><input type="password" id="loginPassword" autocomplete="current-password" />
+        <div id="loginError" class="login-error"></div>
+        <div class="modal-actions">
+          <button type="button" id="loginRegister" class="btn ghost">注册</button>
+          <button type="submit" id="loginSubmit" class="btn primary">登录</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- v4 模拟模式：欢迎弹窗（新用户默认模拟模式） -->
+  <div id="welcomeModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>👋 欢迎使用财务小管家</h2>
+      <p class="hint">初次见面！当前默认使用<b>模拟数据</b>，以便您更好地了解本产品功能。</p>
+      <p class="hint">如需开始您的记账旅程，请前往 <b>设置</b> 退出模拟模式。</p>
+      <div class="modal-actions">
+        <button type="button" id="welcomeClose" class="btn primary">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v4 模拟模式：操作拦截提示 -->
+  <div id="demoToastModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2 id="demoToastTitle">提示</h2>
+      <p id="demoToastMsg" class="confirm-msg"></p>
+      <div class="modal-actions">
+        <button type="button" id="demoToastClose" class="btn primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v3 阶段四：AI 智能记账 modal -->
+  <div id="aiModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>✨ AI 智能记账</h2>
+      <p class="hint">粘贴一段文字（可从备忘录/随手记粘贴），AI 帮你自动识别成记账条目。</p>
+      <div class="field">
+        <textarea id="aiText" rows="6" placeholder="例如：打车30 午饭25 周三 买奶茶18"></textarea>
+      </div>
+      <div id="aiStatus" class="ai-status"></div>
+      <div id="aiResult" class="ai-result"></div>
+      <div class="modal-actions">
+        <button type="button" id="aiCancel" class="btn ghost">取消</button>
+        <button type="button" id="aiParseGo" class="btn primary">✨ 识别</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
