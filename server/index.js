@@ -207,6 +207,8 @@ function initSchema() {
       is_admin INTEGER NOT NULL DEFAULT 0,
       demo_mode INTEGER NOT NULL DEFAULT 1,     -- v4 模拟模式（新用户默认模拟）
       last_insight TEXT DEFAULT '',             -- v4 最近一次 AI 消费洞察文本（保存，刷新/重登仍在）
+      last_login_at TEXT DEFAULT '',            -- v5 上次登录时间
+      login_count INTEGER NOT NULL DEFAULT 0,   -- v5 累计登录次数
       created_at TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS sessions (
@@ -255,6 +257,9 @@ function migrate() {
   if (!ucols.includes('demo_mode')) db.exec('ALTER TABLE users ADD COLUMN demo_mode INTEGER NOT NULL DEFAULT 1');
   // v4 洞察保留：users 表加 last_insight 列
   if (!ucols.includes('last_insight')) db.exec('ALTER TABLE users ADD COLUMN last_insight TEXT DEFAULT \'\'');
+  // v5 活跃度：users 表加 last_login_at / login_count 列
+  if (!ucols.includes('last_login_at')) db.exec('ALTER TABLE users ADD COLUMN last_login_at TEXT DEFAULT \'\'');
+  if (!ucols.includes('login_count')) db.exec('ALTER TABLE users ADD COLUMN login_count INTEGER NOT NULL DEFAULT 0');
 
   // 大类名唯一：支出/收入各自唯一、跨支出/收入可重名（幂等，只在缺失时建）
   // v3 多用户：大类名唯一改为按 (user_id, kind, name)。先删旧的全局唯一索引（若存在），再建新的。
@@ -704,6 +709,8 @@ addRoute('POST', '/api/auth/login', async (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE username=?').get(username);
   if (!user || user.password_hash !== hashPwd(password)) return json(res, 401, { error: '用户名或密码错误' });
   const token = createSession(user.id);
+  // v5 活跃度：记录上次登录时间 + 累计次数
+  db.prepare('UPDATE users SET last_login_at=datetime(\'now\'), login_count=login_count+1 WHERE id=?').run(user.id);
   return json(res, 200, { ok: true, token, username: user.username, isAdmin: !!user.is_admin, aiQuota: user.ai_quota, demoMode: !!user.demo_mode, lastInsight: user.last_insight || '' });
 });
 addRoute('POST', '/api/auth/logout', async (req, res, url) => {
@@ -726,7 +733,7 @@ addRoute('PUT', '/api/demo-mode', async (req, res, url) => {
 });
 addRoute('GET', '/api/admin/users', async (req, res) => {
   if (!req.user.is_admin) return json(res, 403, { error: '需要管理员权限' });
-  const users = db.prepare('SELECT id, username, ai_quota, is_admin, created_at FROM users ORDER BY id').all();
+  const users = db.prepare('SELECT id, username, ai_quota, is_admin, last_login_at, login_count, created_at FROM users ORDER BY id').all();
   return json(res, 200, users);
 });
 // v3 阶段三：admin 给某用户设置/增减 AI 额度
