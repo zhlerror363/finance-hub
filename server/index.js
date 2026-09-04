@@ -661,11 +661,13 @@ addRoute('GET', '/app.js', staticH('app.js'));
 addRoute('GET', '/styles.css', staticH('styles.css'));
 
 // --- 用户认证（v3 多用户）---
-// 禁用用户名：包含以下任一关键词（大小写不敏感）即拒绝。要加规则只需在这里追加。
+// 禁用用户名：包含以下任一关键词（大小写不敏感）即拒绝。要加规则只需在数组追加。
+// 第一组：管理员实名 / 系统保留名；第二组：违禁词（低俗/不雅/敏感）。可按需增补。
 function isReservedUsername(name) {
   const n = name.toLowerCase();
-  const banned = ['林子恒', 'admin', 'administrator', 'root', 'zhlerror363', 'system'];
-  return banned.some((w) => n.includes(w));
+  const reserved = ['林子恒', 'admin', 'administrator', 'root', 'zhlerror363', 'system'];
+  const vulgar = ['傻逼', '傻b', '蠢货', '白痴', '妈的', '操你', '妈的逼', 'cnm', 'nmsl', 'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', '草泥马', '妈卖批', '去你妈', '王八蛋', '狗娘养的', '色情', '裸聊', '约炮', '赌博', '诈骗', '代孕'];
+  return reserved.some((w) => n.includes(w)) || vulgar.some((w) => n.includes(w));
 }
 addRoute('POST', '/api/auth/register', async (req, res) => {
   const body = await readBody(req);
