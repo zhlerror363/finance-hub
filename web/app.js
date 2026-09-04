@@ -360,6 +360,21 @@ function closeAIModal() { $('#aiModal').classList.add('hidden'); }
 function openAIModal() { $('#aiModal').classList.remove('hidden'); $('#aiText').value = ''; $('#aiStatus').textContent = ''; $('#aiResult').innerHTML = ''; aiPending = []; }
 
 // v3 阶段四：AI 消费洞察
+// 渲染 AI 洞察两段文字（优美画像 + 正经分析，用 \n\n 分隔）
+function renderInsightText(box, insight) {
+  if (!box) return;
+  const parts = String(insight || '').split(/\n\s*\n/).filter((s) => s.trim());
+  let html = '';
+  if (parts.length >= 2) {
+    html = '<div class="ai-insight-text ai-insight-gentle">' + esc(parts[0].trim()) + '</div>' +
+           '<div class="ai-insight-text ai-insight-analysis">' + esc(parts[1].trim()) + '</div>';
+  } else if (parts.length === 1) {
+    html = '<div class="ai-insight-text">' + esc(parts[0].trim()) + '</div>';
+  } else {
+    html = '<div class="ai-insight-text">' + esc(insight) + '</div>';
+  }
+  box.innerHTML = html;
+}
 async function runAIInsight() {
   const box = $('#aiInsightBox');
   if (!box) return;
@@ -367,15 +382,7 @@ async function runAIInsight() {
   try {
     const r = await api('/api/ai/insight', { method: 'POST', body: '{}' });
     // 拆成两段：第一段优美画像，第二段正经分析（用空行 \n\n 分隔）
-    const parts = String(r.insight || '').split(/\n\s*\n/).filter((s) => s.trim());
-    let html = '';
-    if (parts.length >= 2) {
-      html = '<div class="ai-insight-text ai-insight-gentle">' + esc(parts[0].trim()) + '</div>' +
-             '<div class="ai-insight-text ai-insight-analysis">' + esc(parts[1].trim()) + '</div>';
-    } else {
-      html = '<div class="ai-insight-text">' + esc(r.insight) + '</div>';
-    }
-    box.innerHTML = html;
+    renderInsightText(box, r.insight);
   } catch (e) { box.textContent = e.message; }
 }
 
@@ -391,6 +398,8 @@ async function init() {
   $('#monthPicker').value = state.month;
   $('#txDate').value = new Date().toISOString().slice(0, 10);
   $('#accountInfo').textContent = me.username;
+  // v4 洞察保留：若上次生成了 AI 消费洞察，登录/刷新后重新显示
+  if (me.lastInsight) renderInsightText($('#aiInsightBox'), me.lastInsight);
   applyDemoUI();
   // v4 模拟模式：默认给新用户看欢迎弹窗（若还未关闭过）
   if (state.demoMode && !localStorage.getItem('fh_demo_welcomed')) {

@@ -206,6 +206,7 @@ function initSchema() {
       ai_quota INTEGER NOT NULL DEFAULT 0,      -- AI 剩余调用次数
       is_admin INTEGER NOT NULL DEFAULT 0,
       demo_mode INTEGER NOT NULL DEFAULT 1,     -- v4 模拟模式（新用户默认模拟）
+      last_insight TEXT DEFAULT '',             -- v4 最近一次 AI 消费洞察文本（保存，刷新/重登仍在）
       created_at TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS sessions (
@@ -252,6 +253,8 @@ function migrate() {
   // v4 模拟模式：users 表加 demo_mode 列（新用户默认模拟）
   const ucols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
   if (!ucols.includes('demo_mode')) db.exec('ALTER TABLE users ADD COLUMN demo_mode INTEGER NOT NULL DEFAULT 1');
+  // v4 洞察保留：users 表加 last_insight 列
+  if (!ucols.includes('last_insight')) db.exec('ALTER TABLE users ADD COLUMN last_insight TEXT DEFAULT \'\'');
 
   // 大类名唯一：支出/收入各自唯一、跨支出/收入可重名（幂等，只在缺失时建）
   // v3 多用户：大类名唯一改为按 (user_id, kind, name)。先删旧的全局唯一索引（若存在），再建新的。
@@ -665,11 +668,11 @@ addRoute('POST', '/api/auth/register', async (req, res) => {
   if (!username || username.length < 2) return json(res, 400, { error: '用户名至少 2 个字符' });
   if (!password || password.length < 4) return json(res, 400, { error: '密码至少 4 位' });
   if (db.prepare('SELECT id FROM users WHERE username=?').get(username)) return json(res, 409, { error: '用户名已被占用' });
-  const info = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(username, hashPwd(password));
+  const info = db.prepare('INSERT INTO users (username, password_hash, ai_quota) VALUES (?, ?, ?)').run(username, hashPwd(password), 5);
   const token = createSession(info.lastInsertRowid);
-  // 新用户：初始化一套默认分类 + 默认进模拟模式（demo_mode 默认 1）
+  // 新用户：初始化一套默认分类 + 默认进模拟模式（demo_mode 默认 1）+ 送 5 次 AI 额度
   seedUserCategories(info.lastInsertRowid);
-  return json(res, 200, { ok: true, token, username, demoMode: true });
+  return json(res, 200, { ok: true, token, username, demoMode: true, aiQuota: 5 });
 });
 addRoute('POST', '/api/auth/login', async (req, res) => {
   const body = await readBody(req);
@@ -678,7 +681,7 @@ addRoute('POST', '/api/auth/login', async (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE username=?').get(username);
   if (!user || user.password_hash !== hashPwd(password)) return json(res, 401, { error: '用户名或密码错误' });
   const token = createSession(user.id);
-  return json(res, 200, { ok: true, token, username: user.username, isAdmin: !!user.is_admin, aiQuota: user.ai_quota, demoMode: !!user.demo_mode });
+  return json(res, 200, { ok: true, token, username: user.username, isAdmin: !!user.is_admin, aiQuota: user.ai_quota, demoMode: !!user.demo_mode, lastInsight: user.last_insight || '' });
 });
 addRoute('POST', '/api/auth/logout', async (req, res, url) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
@@ -689,7 +692,7 @@ addRoute('GET', '/api/auth/me', async (req, res, url) => {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const user = userFromToken(token);
   if (!user) return json(res, 401, { error: '未登录' });
-  return json(res, 200, { username: user.username, isAdmin: !!user.is_admin, aiQuota: user.ai_quota, id: user.id, demoMode: !!user.demo_mode });
+  return json(res, 200, { username: user.username, isAdmin: !!user.is_admin, aiQuota: user.ai_quota, id: user.id, demoMode: !!user.demo_mode, lastInsight: user.last_insight || '' });
 });
 // v4 模拟模式：切换 demo_mode（进入/退出模拟模式）——注意不在 /api/auth 下，否则 dispatch 不鉴权
 addRoute('PUT', '/api/demo-mode', async (req, res, url) => {
@@ -801,6 +804,7 @@ addRoute('POST', '/api/ai/parse', async (req, res, url) => {
 addRoute('POST', '/api/ai/insight', async (req, res, url) => {
   // v4 模拟模式：不调 API、不扣额度，返回预设演示洞察
   if (req.user.demo_mode) {
+    db.prepare('UPDATE users SET last_insight=? WHERE id=?').run(demoInsight, req.user.id);
     return json(res, 200, { insight: demoInsight, quotaLeft: req.user.ai_quota, demoMode: true });
   }
   const quota = checkQuota(req.userId);
@@ -846,6 +850,7 @@ addRoute('POST', '/api/ai/insight', async (req, res, url) => {
       '整体像位懂你的朋友在说话，不说教、不掉书袋。只输出这两段正文，不要 markdown 标题、不要列点、不要"我是AI"。';
     const content = await callDeepSeek([{ role: 'system', content: sys }, { role: 'user', content: JSON.stringify(payload) }]);
     consumeQuota(req.userId);
+    db.prepare('UPDATE users SET last_insight=? WHERE id=?').run(content, req.user.id);
     return json(res, 200, { insight: content, quotaLeft: quota.quota - 1 });
   } catch (e) {
     return json(res, 500, { error: String(e && e.message || e) });
