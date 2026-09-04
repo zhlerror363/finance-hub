@@ -661,16 +661,20 @@ addRoute('GET', '/app.js', staticH('app.js'));
 addRoute('GET', '/styles.css', staticH('styles.css'));
 
 // --- 用户认证（v3 多用户）---
+// 禁用用户名：包含以下任一关键词（大小写不敏感）即拒绝。要加规则只需在这里追加。
+function isReservedUsername(name) {
+  const n = name.toLowerCase();
+  const banned = ['林子恒', 'admin', 'administrator', 'root', 'zhlerror363', 'system'];
+  return banned.some((w) => n.includes(w));
+}
 addRoute('POST', '/api/auth/register', async (req, res) => {
   const body = await readBody(req);
   const username = String(body.username || '').trim();
   const password = String(body.password || '');
   if (!username || username.length < 2) return json(res, 400, { error: '用户名至少 2 个字符' });
   if (!password || password.length < 4) return json(res, 400, { error: '密码至少 4 位' });
-  // 保留/禁用用户名：包含「林子恒」或「admin」开头/相关的都拒绝（视为已被注册）
-  const unameUpper = username.toLowerCase();
-  const isReserved = username.includes('林子恒') || unameUpper.startsWith('admin') || unameUpper.includes('administrator') || unameUpper === 'root' || unameUpper.includes('zhlerror363') || unameUpper === 'system';
-  if (isReserved) return json(res, 409, { error: '该用户名已被注册' });
+  // 保留/禁用用户名：只要包含这些词（大小写不敏感）就拒绝 —— 无需穷举变体
+  if (isReservedUsername(username)) return json(res, 409, { error: '该用户名已被注册' });
   if (db.prepare('SELECT id FROM users WHERE username=?').get(username)) return json(res, 409, { error: '用户名已被占用' });
   const info = db.prepare('INSERT INTO users (username, password_hash, ai_quota) VALUES (?, ?, ?)').run(username, hashPwd(password), 10);
   const token = createSession(info.lastInsertRowid);
