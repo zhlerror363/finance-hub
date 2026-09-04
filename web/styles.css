@@ -496,10 +496,18 @@ body.dragging-vault { user-select: none; cursor: grabbing; }
   .vault-grid { grid-template-columns: 1fr; }
   .cat-col-left { grid-template-columns: 1fr; }
   .tx-item { padding: 8px 10px; }
+  /* 手机窄屏：统计卡收窄 + 大金额数字缩小，避免数字撑爆卡片 */
+  .stat { padding: 12px 12px; }
+  .stat .value { font-size: 19px; word-break: break-all; }
+  .stat .label { font-size: 12px; }
   .item-3col, .item-2col { grid-template-columns: 1fr; }
   .month-pick { font-size: 12px; }
   .month-pick input, .month-pick select { max-width: 110px; padding: 6px 8px; }
   .eye-btn, .toggle button { width: 34px; height: 34px; font-size: 15px; }
+  /* 手机窄屏：顶部操作区不撑爆，允许换行 */
+  .topbar { flex-wrap: wrap; }
+  .top-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .month-pick span { display: none; }
   .demo-watermark { font-size: 28px; letter-spacing: 3px; }
   /* 小屏防溢出的容器 */
   .top-actions { flex-wrap: wrap; }
