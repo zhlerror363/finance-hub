@@ -278,14 +278,16 @@ async function renderAdminUsers() {
     <div class="admin-user-row" data-uid="${u.id}">
       <div class="admin-user-name">${esc(u.username)}${u.is_admin ? ' <span class="au-admin">管理员</span>' : ''}</div>
       <div class="admin-user-meta">
-        <span class="au-m">AI：<strong>${u.ai_quota}</strong></span>
-        <span class="au-m">上次登录：${u.last_login_at ? esc(u.last_login_at.slice(0, 16)) : '从未'}</span>
-        <span class="au-m">登录 ${u.login_count || 0} 次</span>
+        <span class="au-m last-login">上次登录：${u.last_login_at ? esc(u.last_login_at.slice(0, 16)) : '从未'}</span>
+        <span class="au-m last-count">登录 ${u.login_count || 0} 次</span>
       </div>
-      <div class="admin-user-actions">
-        <button class="btn ghost small" data-quota-add="10" data-uid="${u.id}">+10</button>
-        <button class="btn ghost small" data-quota-add="50" data-uid="${u.id}">+50</button>
-        <button class="btn ghost small" data-quota-set="0" data-uid="${u.id}">清零</button>
+      <div class="admin-user-right">
+        <div class="admin-user-quota">AI 剩余：<strong>${u.ai_quota}</strong> 次</div>
+        <div class="admin-user-actions">
+          <button class="btn ghost small" data-quota-add="10" data-uid="${u.id}">+10</button>
+          <button class="btn ghost small" data-quota-add="50" data-uid="${u.id}">+50</button>
+          <button class="btn ghost small" data-quota-set="0" data-uid="${u.id}">清零</button>
+        </div>
       </div>
     </div>`).join('') || '<span class="muted">暂无用户</span>';
 }

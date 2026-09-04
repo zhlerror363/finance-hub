@@ -89,13 +89,14 @@ body {
 /* v3 阶段三：admin 额度管理 */
 .admin-users-list { display: flex; flex-direction: column; gap: 8px; }
 .admin-user-row { display: flex; align-items: center; gap: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
-.admin-user-name { font-weight: 600; flex: 1; }
+.admin-user-name { font-weight: 600; min-width: 130px; }
 .au-admin { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 1px 6px; border-radius: 6px; }
-.admin-user-quota { color: var(--muted); font-size: 13px; white-space: nowrap; }
-.admin-user-quota strong { color: var(--text); }
-.admin-user-meta { display: flex; gap: 12px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+.admin-user-meta { flex: 1; display: flex; gap: 14px; color: var(--muted); font-size: 13px; flex-wrap: wrap; align-items: center; }
 .admin-user-meta .au-m { white-space: nowrap; }
 .admin-user-meta strong { color: var(--text); }
+.admin-user-right { display: flex; align-items: center; gap: 10px; }
+.admin-user-quota { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.admin-user-quota strong { color: var(--text); }
 .admin-user-actions { display: flex; gap: 6px; }
 /* 页脚邮箱 */
 .app-footer { margin-top: 28px; padding: 16px 0; color: var(--muted); font-size: 13px; text-align: center; border-top: 1px solid var(--border); }
