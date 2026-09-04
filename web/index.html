@@ -509,12 +509,38 @@
       <h2>登录 财务小管家</h2>
       <form id="loginForm">
         <label>用户名</label><input type="text" id="loginUsername" autocomplete="username" />
-        <label>密码</label><input type="password" id="loginPassword" autocomplete="current-password" />
+        <label>密码</label>
+        <div class="pwd-wrap">
+          <input type="password" id="loginPassword" autocomplete="current-password" />
+          <button type="button" class="pwd-eye" data-eye="loginPassword" title="显示/隐藏密码">👁️</button>
+        </div>
         <div id="loginError" class="login-error"></div>
         <div class="modal-actions">
-          <button type="button" id="loginRegister" class="btn ghost">注册</button>
           <button type="submit" id="loginSubmit" class="btn primary">登录</button>
         </div>
+        <p class="auth-switch">还没有账号？<a href="#" id="goRegister">点击注册</a></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- v3 多用户：注册 modal -->
+  <div id="registerModal" class="modal-overlay hidden">
+    <div class="modal small">
+      <h2>注册 财务小管家</h2>
+      <form id="registerForm">
+        <label>用户名</label><input type="text" id="regUsername" autocomplete="username" />
+        <label>密码</label>
+        <div class="pwd-wrap">
+          <input type="password" id="regPassword" autocomplete="new-password" />
+          <button type="button" class="pwd-eye" data-eye="regPassword" title="显示/隐藏密码">👁️</button>
+        </div>
+        <div id="regStrength" class="pwd-strength"></div>
+        <label>确认密码</label><input type="password" id="regPassword2" autocomplete="new-password" />
+        <div id="regError" class="login-error"></div>
+        <div class="modal-actions">
+          <button type="submit" id="regSubmit" class="btn primary">注册</button>
+        </div>
+        <p class="auth-switch">已有账号？<a href="#" id="goLogin">返回登录</a></p>
       </form>
     </div>
   </div>

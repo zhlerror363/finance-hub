@@ -76,6 +76,40 @@ function setMonthRange(s) {
 
 // v3 多用户：登录 / 注册
 let loginBound = false;
+// 密码小眼睛：切换显示/隐藏
+function bindPwdEyes() {
+  $$('.pwd-eye').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.eye);
+      if (!input) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+      btn.classList.toggle('active');
+    });
+  });
+}
+// 密码强度：长度 + 种类 → 弱/中/强
+function pwdStrength(pwd) {
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (pwd.length >= 12) score++;
+  if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
+  if (/\d/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 1) return { label: '弱', cls: 'weak' };
+  if (score <= 3) return { label: '中', cls: 'mid' };
+  return { label: '强', cls: 'strong' };
+}
+function showRegister() {
+  $('#loginModal').classList.add('hidden');
+  const rm = $('#registerModal');
+  if (rm) { rm.classList.remove('hidden'); $('#regUsername').focus(); }
+}
+function showLoginModal() {
+  const lm = $('#loginModal');
+  if (lm) { lm.classList.remove('hidden'); $('#loginUsername').focus(); }
+  const rm = $('#registerModal');
+  if (rm) rm.classList.add('hidden');
+}
 function showLogin() {
   const m = $('#loginModal');
   if (m) m.classList.remove('hidden');
@@ -85,15 +119,44 @@ function showLogin() {
   if (!loginBound) {
     loginBound = true;
     $('#loginForm').addEventListener('submit', (e) => { e.preventDefault(); doAuth('login'); });
-    $('#loginSubmit').addEventListener('click', (e) => { e.preventDefault(); doAuth('login'); });
-    $('#loginRegister').addEventListener('click', (e) => { e.preventDefault(); doAuth('register'); });
+    $('#registerForm').addEventListener('submit', (e) => { e.preventDefault(); doRegister(); });
+    $('#goRegister').addEventListener('click', (e) => { e.preventDefault(); showRegister(); });
+    $('#goLogin').addEventListener('click', (e) => { e.preventDefault(); showLoginModal(); });
+    // 密码强度实时提示
+    $('#regPassword').addEventListener('input', (e) => {
+      const s = pwdStrength(e.target.value);
+      const el = $('#regStrength');
+      if (el) { el.textContent = '密码强度：' + s.label; el.className = 'pwd-strength ' + s.cls; }
+    });
+    // 回车关闭注册 modal 的遮罩
+    $('#registerModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) showLoginModal(); });
+    bindPwdEyes();
   }
 }
 function hideLogin() {
   const m = $('#loginModal');
   if (m) m.classList.add('hidden');
+  const rm = $('#registerModal');
+  if (rm) rm.classList.add('hidden');
   const app = $('.app');
   if (app) app.style.display = '';
+}
+async function doRegister() {
+  const username = $('#regUsername').value.trim();
+  const password = $('#regPassword').value;
+  const password2 = $('#regPassword2').value;
+  if (!username || !password) { $('#regError').textContent = '请输入用户名和密码'; return; }
+  if (password.length < 6) { $('#regError').textContent = '密码至少 6 位'; return; }
+  if (password !== password2) { $('#regError').textContent = '两次密码不一致'; return; }
+  $('#regError').textContent = '';
+  try {
+    const r = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || '注册失败');
+    stateToken = data.token; localStorage.setItem('fh_token', stateToken);
+    hideLogin();
+    location.reload();
+  } catch (e) { $('#regError').textContent = e.message; }
 }
 async function doAuth(mode) {
   const username = $('#loginUsername').value.trim();
