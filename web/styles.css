@@ -486,6 +486,10 @@ body.dragging-vault { user-select: none; cursor: grabbing; }
   .tabs button { padding: 8px 14px; font-size: 13px; }
   .demo-watermark { font-size: 38px; }
   .modal { max-width: 96vw; }
+  /* 手机端：看板卡片收紧凑，收进同一屏 —— 减小卡片间距/内边距 */
+  .card { padding: 14px; margin-bottom: 12px; }
+  .chart-row { gap: 12px; }
+  .stat-grid { gap: 10px; margin-bottom: 12px; }
 }
 
 /* 超小屏手机（≤480px）：单列到底，金币卡一行一个 */
