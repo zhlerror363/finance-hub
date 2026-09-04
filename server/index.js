@@ -667,7 +667,20 @@ function isReservedUsername(name) {
   const n = name.toLowerCase();
   const reserved = ['林子恒', 'admin', 'administrator', 'root', 'zhlerror363', 'system'];
   const vulgar = ['傻逼', '傻b', '蠢货', '白痴', '妈的', '操你', '妈的逼', 'cnm', 'nmsl', 'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', '草泥马', '妈卖批', '去你妈', '王八蛋', '狗娘养的', '色情', '裸聊', '约炮', '赌博', '诈骗', '代孕'];
-  return reserved.some((w) => n.includes(w)) || vulgar.some((w) => n.includes(w));
+  if (reserved.some((w) => n.includes(w)) || vulgar.some((w) => n.includes(w))) return true;
+  // 「林子恒」变体（谐音/缩写/拆字）拦截：正常用户不会用自己的名字，中招即拦
+  const lin = n.includes('林');
+  const heng = n.includes('恒');
+  // ① 林...恒 骨架（林X恒、林zh、林子h、林z恒 等）
+  if (lin && heng) return true;
+  // ② 含「林」+ 恒首字母 h（林子h、林z恒 等后缀缩写）
+  if (lin && /[hz]/i.test(n)) {
+    // 更精确：林 + 至少一个(子/zh/z/h) 的缩写特征。用「林」开头且后续含 h 或 z+h
+    if (n.startsWith('林') && (n.includes('h') || n.includes('zh') || n.includes('z'))) return true;
+  }
+  // ③ 纯拼音缩写 lzh / 林z h 组合（如 lzh、linzh、linzhiheng）
+  if (/^(?:lzh|linzh|linzhi)/.test(n) || n === 'lzh') return true;
+  return false;
 }
 addRoute('POST', '/api/auth/register', async (req, res) => {
   const body = await readBody(req);
