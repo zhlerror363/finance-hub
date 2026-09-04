@@ -668,11 +668,11 @@ addRoute('POST', '/api/auth/register', async (req, res) => {
   if (!username || username.length < 2) return json(res, 400, { error: '用户名至少 2 个字符' });
   if (!password || password.length < 4) return json(res, 400, { error: '密码至少 4 位' });
   if (db.prepare('SELECT id FROM users WHERE username=?').get(username)) return json(res, 409, { error: '用户名已被占用' });
-  const info = db.prepare('INSERT INTO users (username, password_hash, ai_quota) VALUES (?, ?, ?)').run(username, hashPwd(password), 5);
+  const info = db.prepare('INSERT INTO users (username, password_hash, ai_quota) VALUES (?, ?, ?)').run(username, hashPwd(password), 10);
   const token = createSession(info.lastInsertRowid);
-  // 新用户：初始化一套默认分类 + 默认进模拟模式（demo_mode 默认 1）+ 送 5 次 AI 额度
+  // 新用户：初始化一套默认分类 + 默认进模拟模式（demo_mode 默认 1）+ 送 10 次 AI 额度
   seedUserCategories(info.lastInsertRowid);
-  return json(res, 200, { ok: true, token, username, demoMode: true, aiQuota: 5 });
+  return json(res, 200, { ok: true, token, username, demoMode: true, aiQuota: 10 });
 });
 addRoute('POST', '/api/auth/login', async (req, res) => {
   const body = await readBody(req);
