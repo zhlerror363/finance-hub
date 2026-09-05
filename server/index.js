@@ -195,8 +195,10 @@ function initSchema() {
     );
     CREATE INDEX IF NOT EXISTS idx_ie_item ON item_events(item_id);
     CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT
+      user_id INTEGER NOT NULL DEFAULT 0,  -- v5 数据隔离：设置按用户（0=admin/默认）
+      key TEXT NOT NULL,
+      value TEXT,
+      PRIMARY KEY (user_id, key)
     );
     -- v3 多用户：用户 + 登录会话
     CREATE TABLE IF NOT EXISTS users (
@@ -260,6 +262,14 @@ function migrate() {
   // v5 活跃度：users 表加 last_login_at / login_count 列
   if (!ucols.includes('last_login_at')) db.exec('ALTER TABLE users ADD COLUMN last_login_at TEXT DEFAULT \'\'');
   if (!ucols.includes('login_count')) db.exec('ALTER TABLE users ADD COLUMN login_count INTEGER NOT NULL DEFAULT 0');
+  // v5 数据隔离：settings 表加 user_id（每用户独立设置/金额密码）。旧表无 user_id → 重建。
+  const scols = db.prepare('PRAGMA table_info(settings)').all().map((c) => c.name);
+  if (!scols.includes('user_id')) {
+    db.exec('CREATE TABLE settings_new (user_id INTEGER NOT NULL DEFAULT 0, key TEXT NOT NULL, value TEXT, PRIMARY KEY (user_id, key))');
+    db.exec('INSERT INTO settings_new (user_id, key, value) SELECT 0, key, value FROM settings');
+    db.exec('DROP TABLE settings');
+    db.exec('ALTER TABLE settings_new RENAME TO settings');
+  }
 
   // 大类名唯一：支出/收入各自唯一、跨支出/收入可重名（幂等，只在缺失时建）
   // v3 多用户：大类名唯一改为按 (user_id, kind, name)。先删旧的全局唯一索引（若存在），再建新的。
@@ -376,8 +386,8 @@ function ensureDefaultChildren() {
 // --- 工具 ---
 function yuanToCents(yuan) { return Math.round(Number(yuan) * 100); }
 function centsToYuan(cents) { return Math.round(Number(cents)) / 100; }
-function getSetting(k) { const r = db.prepare('SELECT value FROM settings WHERE key=?').get(k); return r ? r.value : null; }
-function setSetting(k, v) { db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, v); }
+function getSetting(k, userId = 0) { const r = db.prepare('SELECT value FROM settings WHERE user_id=? AND key=?').get(userId, k); return r ? r.value : null; }
+function setSetting(k, v, userId = 0) { db.prepare('INSERT INTO settings (user_id,key,value) VALUES (?,?,?) ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value').run(userId, k, v); }
 function hashPwd(p) { return crypto.createHash('sha256').update(String(p)).digest('hex'); }
 function randomToken() { return crypto.randomBytes(24).toString('hex'); }
 function createSession(userId) {
@@ -1030,7 +1040,7 @@ addRoute('GET', '/api/vaults', async (req, res) => {
   const vaults = db.prepare('SELECT * FROM vaults WHERE user_id=? ORDER BY sort_order, id').all(req.userId);
   const events = db.prepare(`SELECT e.* FROM vault_events e JOIN vaults v ON v.id=e.vault_id WHERE v.user_id=? ORDER BY e.id DESC LIMIT 500`).all(req.userId);
   const un = db.prepare("SELECT COALESCE(SUM(CASE WHEN type='income' THEN amount_cents ELSE -amount_cents END),0) AS c FROM transactions WHERE user_id=? AND channel=''").get(req.userId);
-  const baseline = Number(getSetting('uncat_baseline') || 0);
+  const baseline = Number(getSetting('uncat_baseline', req.userId) || 0);
   const out = vaults.map((v) => ({
     id: v.id, name: v.name, balance: centsToYuan(v.balance_cents), balance_cents: v.balance_cents, updated_at: v.updated_at,
     events: events.filter((e) => e.vault_id === v.id).slice(0, 20).map((e) => ({ id: e.id, delta: centsToYuan(e.delta_cents), after: centsToYuan(e.after_cents), note: e.note, at: e.created_at })),
@@ -1052,7 +1062,7 @@ addRoute('PUT', '/api/vaults/order', async (req, res) => {
 });
 addRoute('PUT', '/api/vaults/reset-uncategorized', async (req, res) => {
   const un = db.prepare("SELECT COALESCE(SUM(CASE WHEN type='income' THEN amount_cents ELSE -amount_cents END),0) AS c FROM transactions WHERE user_id=? AND channel=''").get(req.userId);
-  setSetting('uncat_baseline', String(un.c));
+  setSetting('uncat_baseline', String(un.c), req.userId);
   return json(res, 200, { ok: true, uncategorized: 0 });
 });
 addRoute('PUT', '/api/vaults/:id', async (req, res, url, params) => {
@@ -1256,25 +1266,25 @@ addRoute('GET', '/api/export-transactions', async (req, res) => {
 });
 
 // 设置
-addRoute('GET', '/api/settings', async (req, res) => json(res, 200, { hideAmounts: getSetting('hide_amounts') === '1', hasPassword: !!getSetting('password_hash') }));
+addRoute('GET', '/api/settings', async (req, res) => json(res, 200, { hideAmounts: getSetting('hide_amounts', req.userId) === '1', hasPassword: !!getSetting('password_hash', req.userId) }));
 addRoute('PUT', '/api/settings', async (req, res) => {
   const body = await readBody(req);
-  if (typeof body.hideAmounts === 'boolean') setSetting('hide_amounts', body.hideAmounts ? '1' : '0');
+  if (typeof body.hideAmounts === 'boolean') setSetting('hide_amounts', body.hideAmounts ? '1' : '0', req.userId);
   return json(res, 200, { ok: true });
 });
 addRoute('PUT', '/api/settings/password', async (req, res) => {
   const body = await readBody(req);
   const pwd = String(body.password || '').trim();
-  if (!pwd) db.prepare('DELETE FROM settings WHERE key=?').run('password_hash');
+  if (!pwd) db.prepare('DELETE FROM settings WHERE user_id=? AND key=?').run(req.userId, 'password_hash');
   else {
     if (!/^\d{4}$/.test(pwd) && !/^\d{6}$/.test(pwd)) return json(res, 400, { error: '密码需为 4 位或 6 位数字' });
-    setSetting('password_hash', hashPwd(pwd));
+    setSetting('password_hash', hashPwd(pwd), req.userId);
   }
-  return json(res, 200, { ok: true, hasPassword: !!getSetting('password_hash') });
+  return json(res, 200, { ok: true, hasPassword: !!getSetting('password_hash', req.userId) });
 });
 addRoute('POST', '/api/settings/verify', async (req, res) => {
   const body = await readBody(req);
-  const h = getSetting('password_hash');
+  const h = getSetting('password_hash', req.userId);
   if (!h) return json(res, 200, { ok: true, noPassword: true });
   return json(res, 200, { ok: hashPwd(body.password || '') === h, hasPassword: true });
 });
