@@ -327,8 +327,9 @@ async function runAIParse() {
     const r = await api('/api/ai/parse', { method: 'POST', body: JSON.stringify({ text }) });
     aiPending = r.items || [];
     $('#aiStatus').textContent = r.items.length ? `识别到 ${r.items.length} 条（${{}}）` : '未识别到条目';
+    if (!r.items.length) setParseBtn('parse'); // 没识别到 → 还是「识别」
     renderAIResult();
-  } catch (e) { $('#aiStatus').textContent = e.message; }
+  } catch (e) { $('#aiStatus').textContent = e.message; setParseBtn('parse'); }
 }
 // 生成该大类下的小类选项（供 AI 条目小类下拉）
 function aiSubOptions(categoryName) {
@@ -376,26 +377,40 @@ function renderAIResult() {
       <div class="ai-item-line">
         <select data-f="note" class="ai-note-select">${aiSubOptions(it.category)}</select>
       </div>
-    </div>`}).join('') + '<button id="aiSave" class="btn primary">✓ 确认保存全部</button>';
+    </div>`}).join('');
   box._bound = false;
   bindAIResultEvents(box);
+  setParseBtn('confirm'); // 识别成功 → 右下角「确认保存全部」
+}
+// 保存 AI 识别出的全部条目（识别成功后右下角「确认保存全部」）
+async function saveAIPending() {
+  if (!aiPending.length) return;
+  try {
+    for (const it of aiPending) {
+      const cat = state.categories.find((c) => c.name === it.category && !c.parent_id);
+      await api('/api/transactions', { method: 'POST', body: JSON.stringify({ date: it.date, amount: Number(it.amount) || 0, type: it.type, categoryId: cat ? cat.id : (state.categories.find((c) => !c.parent_id && c.kind === 'expense')?.id), note: it.note || '', channel: it.channel || '', grp: it.grp || '非必要' }) });
+    }
+    toast(`已保存 ${aiPending.length} 笔`);
+    closeAIModal(); await refreshAll();
+  } catch (err) { toast(err.message); }
+}
+// 切换右下角按钮：识别前 =「✨识别」，识别成功有结果 =「✅确认保存全部」
+function setParseBtn(state2) {
+  const btn = $('#aiParseGo');
+  if (!btn) return;
+  if (state2 === 'confirm') {
+    btn.textContent = '✅ 确认保存全部';
+    btn.dataset.mode = 'confirm';
+  } else {
+    btn.textContent = '✨ 识别';
+    btn.dataset.mode = 'parse';
+  }
 }
 function bindAIResultEvents(box) {
   if (box._bound) return; box._bound = true;
   box.addEventListener('click', async (e) => {
     const del = e.target.closest('[data-del]');
     if (del) { aiPending.splice(Number(del.dataset.del), 1); renderAIResult(); return; }
-    const save = e.target.closest('#aiSave');
-    if (save) {
-      try {
-        for (const it of aiPending) {
-          const cat = state.categories.find((c) => c.name === it.category && !c.parent_id);
-          await api('/api/transactions', { method: 'POST', body: JSON.stringify({ date: it.date, amount: Number(it.amount) || 0, type: it.type, categoryId: cat ? cat.id : (state.categories.find((c) => !c.parent_id && c.kind === 'expense')?.id), note: it.note || '', channel: it.channel || '', grp: it.grp || '非必要' }) });
-        }
-        toast(`已保存 ${aiPending.length} 笔`);
-        closeAIModal(); await refreshAll();
-      } catch (err) { toast(err.message); }
-    }
   });
   box.addEventListener('change', (e) => {
     const row = e.target.closest('.ai-item');
@@ -426,7 +441,7 @@ function bindAIResultEvents(box) {
   });
 }
 function closeAIModal() { $('#aiModal').classList.add('hidden'); }
-function openAIModal() { $('#aiModal').classList.remove('hidden'); $('#aiText').value = ''; $('#aiStatus').textContent = ''; $('#aiResult').innerHTML = ''; aiPending = []; }
+function openAIModal() { $('#aiModal').classList.remove('hidden'); $('#aiText').value = ''; $('#aiStatus').textContent = ''; $('#aiResult').innerHTML = ''; aiPending = []; setParseBtn('parse'); }
 
 // v3 阶段四：AI 消费洞察
 // 渲染 AI 洞察两段文字（优美画像 + 正经分析，用 \n\n 分隔）
@@ -1633,7 +1648,11 @@ function bindEvents() {
   $('#userSelect').addEventListener('change', onUserSwitch);
   // v3 阶段四：AI 智能记账
   $('#aiParseBtn').addEventListener('click', openAIModal);
-  $('#aiParseGo').addEventListener('click', runAIParse);
+  $('#aiParseGo').addEventListener('click', () => {
+    // 识别成功后按钮变成「确认保存全部」，点它直接保存，避免反复点识别浪费额度
+    if ($('#aiParseGo').dataset.mode === 'confirm') saveAIPending();
+    else runAIParse();
+  });
   $('#aiCancel').addEventListener('click', closeAIModal);
   // v3 阶段四：AI 消费洞察
   $('#aiInsightBtn').addEventListener('click', runAIInsight);
