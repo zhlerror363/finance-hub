@@ -62,6 +62,23 @@ async function api(path, opts = {}) {
   return data;
 }
 
+// 带 Authorization 下载文件（备份/导出），避免 window.location.href 丢 token 导致 401
+async function downloadAuthFile(path, fallbackName) {
+  const headers = {};
+  if (stateToken) headers['Authorization'] = 'Bearer ' + stateToken;
+  const res = await fetch(path, { headers });
+  if (res.status === 401) { showLogin(); toast('登录已过期'); return; }
+  if (!res.ok) { toast('下载失败（' + res.status + '）'); return; }
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition') || '';
+  const m = cd.match(/filename="?([^";]+)"?/i);
+  const name = (m && m[1]) ? m[1] : fallbackName;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
 
 // ---------- 初始化 ----------
 function setMonthRange(s) {
@@ -1577,8 +1594,9 @@ function bindEvents() {
     if (state.locked) { if (await requireUnlock()) updateLockBtn(); }
     else { state.locked = true; updateLockBtn(); }
   });
-  $('#btnBackup').addEventListener('click', () => { window.location.href = '/api/backup'; });
-  $('#btnExport').addEventListener('click', () => { window.location.href = '/api/export-transactions'; });
+  // 备份/导出：用带 token 的 fetch 拿文件（blob）再触发下载——避免 window.location.href 丢 token 导致 401
+  $('#btnBackup').addEventListener('click', () => downloadAuthFile('/api/backup', 'finance-backup.db'));
+  $('#btnExport').addEventListener('click', () => downloadAuthFile('/api/export-transactions', 'transactions.csv'));
   $('#pwdSet').addEventListener('click', () => {
     if (state.settings.hasPassword) { toast('请先清除密码再设置'); return; }
     openPwdManageModal('set');
