@@ -745,10 +745,10 @@ addRoute('PUT', '/api/demo-mode', async (req, res, url) => {
 // v5 自动更新：admin 触发器，从 GitHub 拉最新代码并重启（避免手动 pull）
 addRoute('POST', '/api/admin/update', async (req, res) => {
   if (!req.user.is_admin) return json(res, 403, { error: '需要管理员权限' });
-  const run = (cmd, env = {}) => new Promise((resolve) => exec(cmd, { cwd: ROOT, timeout: 120000, env: { ...process.env, ...env } }, (err, stdout, stderr) => resolve({ code: err ? 1 : 0, stdout, stderr })));
+  const run = (cmd, env = {}) => new Promise((resolve) => exec(cmd, { cwd: ROOT, timeout: 60000, env: { ...process.env, ...env } }, (err, stdout, stderr) => resolve({ code: err ? 1 : 0, stdout, stderr })));
   try {
-    // 用服务器上的 deploy key（financehub_deploy）拉私有仓库
-    const pull = await run('git -C . pull origin master', { GIT_SSH_COMMAND: 'ssh -i ~/.ssh/financehub_deploy' });
+    // 用绝对路径的 deploy key（~ 在 exec 环境不展开，必须用绝对路径）+ 不确认 host key
+    const pull = await run('git -C . pull origin master', { GIT_SSH_COMMAND: 'ssh -i /home/admin/.ssh/financehub_deploy -o StrictHostKeyChecking=no' });
     let restart = { code: 0, stdout: '', stderr: '' };
     if (pull.code === 0) restart = await run('pm2 restart finance-hub');
     return json(res, 200, { ok: pull.code === 0, pull: pull.stdout.trim() || pull.stderr.trim(), restart: (restart.stdout || '').trim() });
