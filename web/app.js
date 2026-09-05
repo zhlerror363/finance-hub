@@ -444,6 +444,12 @@ function renderInsightText(box, insight) {
   }
   box.innerHTML = html;
 }
+// 设置普通用户看到的「AI 额度」显示（剩余次数）
+function setAiQuota(n) {
+  const el = $('#aiQuota');
+  if (!el) return;
+  el.textContent = (n === undefined || n === null) ? '' : `AI额度：${n} 次`;
+}
 async function runAIInsight() {
   const box = $('#aiInsightBox');
   if (!box) return;
@@ -452,6 +458,8 @@ async function runAIInsight() {
     const r = await api('/api/ai/insight', { method: 'POST', body: '{}' });
     // 拆成两段：第一段优美画像，第二段正经分析（用空行 \n\n 分隔）
     renderInsightText(box, r.insight);
+    // 生成洞察消耗一次额度，刷新剩余显示
+    if (typeof r.quotaLeft === 'number') setAiQuota(r.quotaLeft);
   } catch (e) { box.textContent = e.message; }
 }
 
@@ -469,6 +477,9 @@ async function init() {
   $('#accountInfo').textContent = me.username;
   // v4 洞察保留：若上次生成了 AI 消费洞察，登录/刷新后重新显示
   if (me.lastInsight) renderInsightText($('#aiInsightBox'), me.lastInsight);
+  // v5 普通用户显示自己的 AI 剩余额度
+  setAiQuota(me.aiQuota);
+
   applyDemoUI();
   // v4 模拟模式：默认给新用户看欢迎弹窗（若还未关闭过）
   if (state.demoMode && !localStorage.getItem('fh_demo_welcomed')) {
