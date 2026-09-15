@@ -101,9 +101,15 @@ body {
 .admin-user-quota strong { color: var(--text); }
 .admin-user-actions { display: flex; gap: 6px; }
 /* 页脚邮箱 */
-.app-footer { margin-top: 28px; padding: 16px 0; color: var(--muted); font-size: 13px; text-align: center; border-top: 1px solid var(--border); }
+.app-footer { margin-top: 28px; padding: 16px 0; color: var(--muted); font-size: 13px; text-align: center; border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .footer-email { color: var(--accent); text-decoration: none; }
 .footer-email:hover { text-decoration: underline; }
+/* 页脚备案信息（公安联网备案 + ICP 备案）：窄屏可换行、不溢出 */
+.footer-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 14px; max-width: 100%; }
+.footer-beian { font-size: 12px; line-height: 1.6; }
+.footer-beian .beian-link { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); text-decoration: none; white-space: nowrap; transition: color .15s; }
+.footer-beian .beian-link:hover { color: var(--accent); text-decoration: underline; }
+.footer-beian .beian-icon { width: auto; height: 18px; flex: 0 0 auto; vertical-align: middle; }
 /* v4 模拟模式水印 */
 .demo-watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-16deg); font-size: 64px; font-weight: 800; color: rgba(120, 130, 150, 0.14); letter-spacing: 6px; pointer-events: none; z-index: 200; white-space: nowrap; user-select: none; }
 
