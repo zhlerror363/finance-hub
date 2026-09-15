@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>消费月报 2026-04</title>
+<style>
+:root { --bg:#f6f7fb; --card:#ffffff; --fg:#1f2430; --muted:#6b7280;
+        --line:#e5e7eb; --green:#2e9e5b; --red:#d95555; --blue:#4a7fc1; }
+* { box-sizing: border-box; }
+body { margin:0; padding:24px; background:var(--bg); color:var(--fg);
+       font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; font-size:14px; }
+.wrap { max-width: 960px; margin: 0 auto; }
+h1 { font-size:20px; margin:0 0 4px; }
+.meta { color:var(--muted); font-size:12px; margin-bottom:16px; line-height:1.7; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px;
+        padding:16px; margin-bottom:16px; }
+.card h2 { font-size:15px; margin:0 0 12px; }
+.cards { display:flex; gap:12px; flex-wrap:wrap; }
+.stat { flex:1 1 140px; background:var(--card); border:1px solid var(--line);
+        border-radius:8px; padding:12px 14px; }
+.stat .k { color:var(--muted); font-size:12px; }
+.stat .v { font-size:20px; font-weight:600; margin-top:4px; }
+.stat .s { color:var(--muted); font-size:11px; margin-top:2px; }
+.pos { color:var(--green); } .neg { color:var(--red); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+th { color:var(--muted); font-weight:500; font-size:12px; }
+td.num, th.num { text-align:right; font-variant-numeric: tabular-nums; }
+.bar { display:flex; height:22px; border-radius:5px; overflow:hidden;
+       background:#eef0f4; margin:8px 0; }
+.bar span { display:block; height:100%; }
+.legend { font-size:12px; color:var(--muted); line-height:1.9; }
+.dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
+.empty { color:var(--muted); padding:18px 0; text-align:center; }
+.wraptext { overflow-wrap:anywhere; word-break:break-all; max-width:340px; }
+.note { color:var(--muted); font-size:12px; line-height:1.8; margin-top:8px; }
+.pie-wrap { display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+.appendix { color:var(--muted); font-size:12px; line-height:1.9; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>消费月报 2026-04</h1>
+  <div class="meta">
+    用户：demo_alice(id=1)　·　月份：2026-04　·　生成时间：2026-09-13 11:19:37　·　数据来源：sample.db<br>
+    金额单位：元（内部按整数分运算）；支出为正数显示。
+  </div>
+  <div class="card"><h2>总览</h2><div class="cards"><div class="stat"><div class="k">总收入</div><div class="v pos">0.00</div></div><div class="stat"><div class="k">总支出</div><div class="v neg">12.00</div></div><div class="stat"><div class="k">结余</div><div class="v ">-12.00</div></div><div class="stat"><div class="k">笔数</div><div class="v ">1</div></div><div class="stat"><div class="k">日均支出</div><div class="v ">12.00（按 1 个记账日）</div></div></div></div>
+  <div class="card"><h2>分类占比（支出）</h2><div class="pie-wrap"><svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="分类占比饼图"><circle cx="90.0" cy="90.0" r="89.0" fill="#4a7fc1" /></svg><table><tr><th>分类</th><th class='num'>金额</th><th class='num'>占比</th><th class='num'>笔数</th></tr><tr><td><span class='dot' style='background:#4a7fc1'></span>三餐</td><td class='num'>12.00</td><td class='num'>100.0%</td><td class='num'>1</td></tr></table></div></div>
+  <div class="card"><h2>必要 vs 非必要</h2><div class="bar"><span style="width:100%;background:var(--green)"></span><span style="width:0%;background:var(--red)"></span></div><div class="legend"><span class="dot" style="background:var(--green)"></span>必要：12.00（100.0%）　<span class="dot" style="background:var(--red)"></span>非必要：0.00（0.0%）　未标注（grp 为空/其它，未参与比例）：0.00</div><div class="note">口径：仅支出交易，按 transactions.grp（与 finance-hub 官方查询一致：type='expense' AND grp IN ('必要','非必要')）。</div></div>
+  <div class="card"><h2>环比上月（2026-03）</h2><table><tr><th>项目</th><th class='num'>本月</th><th class='num'>上月</th><th class='num'>环比</th></tr><tr><td>总收入</td><td class='num'>0.00</td><td class='num'>3000.00</td><td class='num'>-100.0%</td></tr><tr><td>总支出</td><td class='num'>12.00</td><td class='num'>0.00</td><td class='num'>—</td></tr><tr><td>结余</td><td class='num'>-12.00</td><td class='num'>3000.00</td><td class='num'>-100.4%</td></tr></table><div class='note'>环比 =（本月 − 上月）/ 上月；上月为 0 时显示 —。</div></div>
+  <div class='card'><h2>Top 10 支出</h2><table><tr><th>日期</th><th>分类</th><th>备注</th><th class='num'>金额</th></tr><tr><td>2026-04-02</td><td>三餐</td><td class='wraptext'>占位四月餐费</td><td class='num'>12.00</td></tr></table></div>
+  <div class="card"><h2>订阅类</h2><div class="empty">本月无订阅类记录</div></div>
+  <div class="card"><h2>附录：未纳入本报告的维度</h2><div class="appendix">- transactions.share_kind：分摊备注（自由文本，如 "÷2"），不影响金额口径，未纳入统计。<br>- transactions.channel：支付渠道，本报告未按渠道拆分。<br>- items / item_events：大件物品台账，非流水，未纳入。<br>- vaults / vault_events：账户余额变动，非消费流水，未纳入。<br>- transactions.remark 单独字段已参与「订阅类」命中与附录说明，但不单独展示。<br>- settings / sessions：非账目数据，未纳入。</div></div>
+</div>
+</body>
+</html>

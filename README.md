@@ -2,6 +2,30 @@
 
 一款**多用户**的个人记账 Web 应用，支持 AI 智能记账与消费洞察，零第三方依赖，可自托管部署。
 
+## ⚠️ 运维禁令：多项目共用 PM2（先读这一节）
+
+> **本机（服务器）上 `finance-hub` 与其它项目共用同一个 PM2 daemon。**
+> **严禁执行 `pm2 delete all`、`pm2 stop all`、`pm2 restart all`、`pm2 kill`。**
+> 这些命令会**一并干掉其它项目的服务**，并且在 2026-09-14 已经造成过一次真实线上故障
+> （finance-hub 被另一个项目的部署动作清除，随后 `pm2 save` 又把故障固化成开机状态）。
+
+**正确的停服方式 —— 永远带具体服务名：**
+
+```bash
+pm2 stop finance-hub      # 停止（保留定义，可再 start）
+pm2 restart finance-hub   # 重启
+pm2 delete finance-hub    # 彻底移除（谨慎）
+```
+
+**更好：使用守卫脚本**（只接受具体服务名，明确拒绝 `all` / 通配 / 进程 ID）：
+
+```bash
+./deploy/pm2-safe.sh stop finance-hub --dry-run   # 服务器侧，先演练
+pwsh -File scripts\pm2-safe.ps1 -Action stop -Name finance-hub -DryRun   # Windows 侧
+```
+
+完整禁令条文、事故复盘、`PM2_HOME` 隔离方案与实测记录见 **`deploy/PM2-安全禁令.md`**。
+
 ## 功能
 
 - **多用户**：账号注册 / 登录 / 数据完全隔离；管理员可切换查看任意用户并分配 AI 额度。
@@ -38,7 +62,15 @@ finance-hub/
 ├─ server/index.js       # 后端（HTTP + SQLite + REST + AI 代理）
 ├─ web/                  # 前端（原生 JS + 手写 SVG）
 ├─ scripts/              # 导入工具等
+│  └─ pm2-safe.ps1       # PM2 安全守卫（Windows：拒绝 all/通配/进程 ID）
+├─ deploy/               # 部署资产
+│  ├─ health-check.sh    # 健康检查（cron 每分钟，挂了自动拉起）
+│  ├─ pm2-safe.sh        # PM2 安全守卫（Linux：拒绝 all/通配/进程 ID）
+│  ├─ PM2-安全禁令.md     # ⚠️ 硬性运维禁令 + 事故复盘（必读）
+│  ├─ nginx-financehub.conf
+│  └─ clean-test-user.js
 ├─ data/                 # 运行时生成（用户库 finance.db + 演示库 demo.db），不入库
+├─ docs/                 # 设计文档（不入库）
 ├─ start.bat             # Windows 启动
 └─ README.md
 ```
