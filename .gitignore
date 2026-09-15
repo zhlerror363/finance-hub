@@ -2,6 +2,10 @@
 data/*
 !data/.gitkeep
 
+# 测试运行时生成的 SQLite 示例库（如 finance-report/tests/sample.db）：属运行产物、每次跑测试都会重建，
+# 不入库。同目录下的 out-*.html 是已入库的参考输出，不受本规则影响。
+finance-report/tests/*.db
+
 # 依赖（本项目零依赖，为保险忽略）
 node_modules/
 
