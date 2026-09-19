@@ -1,7 +1,9 @@
 // backup-db.js -- finance-hub offline snapshot using node:sqlite VACUUM INTO
 // Usage: node scripts\backup-db.js <src.db> <dst.db>
-// Bypasses running finance-hub service; works on a possibly-locked db by using
-// a fresh connection in 'ro' mode after briefly waiting for WAL flush.
+// Bypasses running finance-hub service and never writes to the source db: the
+// source is opened read-only, which still permits VACUUM INTO. (W79: a
+// read-write connection would checkpoint the WAL into the source and delete
+// its -wal sidecar on close, mutating a live/archival database.)
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -27,7 +29,7 @@ if (!fs.existsSync(src)) {
     process.exit(3);
   }
   try {
-    const db = new sqlite.DatabaseSync(src, { readOnly: false });
+    const db = new sqlite.DatabaseSync(src, { readOnly: true });
     fs.mkdirSync(path.dirname(dst), { recursive: true });
     // VACUUM INTO produces a consistent snapshot even if the source is being written to.
     db.exec(`VACUUM INTO '${dst.replace(/'/g, "''")}'`);
