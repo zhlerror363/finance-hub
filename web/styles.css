@@ -27,6 +27,9 @@
   --accent-2: #9db8ff;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
+/* 主题图标由 CSS 跟随 data-theme 决定：首屏即正确，不会"先显示错的再跳" */
+#themeToggle::before { content: "🌙"; }
+[data-theme="dark"] #themeToggle::before { content: "☀️"; }
 
 * { box-sizing: border-box; }
 .hidden { display: none !important; }

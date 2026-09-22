@@ -1851,7 +1851,7 @@ function closePwdManageModal() { $('#pwdManageModal').classList.add('hidden'); }
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem('theme', theme);
-  $('#themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+  // 主题图标交给 CSS（#themeToggle::before 跟随 data-theme），首屏不会先显示错的再跳
 }
 
 init();

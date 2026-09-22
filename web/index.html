@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>财务小管家</title>
   <link rel="stylesheet" href="./styles.css" />
+  <script>
+    /* 主题预热：必须在 <head> 内、首次绘制之前执行。
+       否则刷新时会先按默认浅色画整页，等 app.js 初始化（约 9 个网络往返）跑完才切深色 —— 即"白闪"。 */
+    (function () {
+      var t = 'light';
+      try { if (localStorage.getItem('theme') === 'dark') t = 'dark'; } catch (e) { }
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
 </head>
 <body>
   <!-- v0.2 第七轮：小类改为 select，移除独立 datalist -->
@@ -20,7 +29,7 @@
       <div class="top-actions">
         <button id="eyeBtn" class="eye-btn" title="隐藏/显示金额">👁️</button>
         <div class="toggle">
-          <button id="themeToggle" title="切换主题">🌙</button>
+          <button id="themeToggle" title="切换主题" aria-label="切换主题"></button>
         </div>
         <label class="month-pick">
           <span>月份</span>
