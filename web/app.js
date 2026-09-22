@@ -544,6 +544,7 @@ async function init() {
   await loadTrend();
   fillChannelOptions();
   bindEvents();
+  syncTrendCustom(); // 首屏就让「近 N 单位」控件与默认的 近12月 一致
   applyTheme(localStorage.getItem('theme') || 'light');
 }
 
@@ -907,6 +908,11 @@ function onTrendCustom() {
   state.trend = { unit: $('#trendUnit').value, n };
   $$('.seg-btn').forEach((x) => x.classList.remove('active'));
   loadTrend();
+}
+// 把 state.trend 回写到「近 [N] [单位]」控件 —— 否则点预设按钮后控件还显示旧值（看着像"没有月"）
+function syncTrendCustom() {
+  $('#trendNum').value = state.trend.n;
+  $('#trendUnit').value = state.trend.unit;
 }
 
 function renderTrend(data, containerId = '#trendChart') {
@@ -1430,6 +1436,7 @@ function bindEvents() {
       state.trend = { unit: b.dataset.unit, n: Number(b.dataset.n) };
       $$('.seg-btn').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
+      syncTrendCustom();
       loadTrend();
     }
   });
