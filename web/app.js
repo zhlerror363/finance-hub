@@ -497,6 +497,8 @@ async function runAIInsight() {
 
 async function init() {
   // v3 多用户：先检查登录态，未登录 → 显示登录页
+  // 刷新后回到原标签页：在数据加载之前就切好，避免先闪一下「记账」
+  activateTab((location.hash || '').replace('#', '') || localStorage.getItem('fh_tab') || 'ledger', false);
   if (!stateToken) { showLogin(); return; }
   const me = await api('/api/auth/me').catch(() => null);
   if (!me) { showLogin(); return; }
@@ -1347,15 +1349,21 @@ function enableCategoryDrag() {
   });
 }
 
+// ---------- 标签页 ----------
+// 当前标签页记在 URL hash + localStorage：刷新后回到原页，而不是弹回默认的「记账」
+const TAB_NAMES = ['ledger', 'dashboard', 'vaults', 'settings'];
+function activateTab(name, write = true) {
+  if (!TAB_NAMES.includes(name)) name = 'ledger';
+  $$('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
+  try { localStorage.setItem('fh_tab', name); } catch (e) { /* 隐私模式忽略 */ }
+  if (write) { try { history.replaceState(null, '', '#' + name); } catch (e) { location.hash = name; } }
+}
+
 // ---------- 事件 ----------
 function bindEvents() {
   $$('.tabs button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      $$('.tabs button').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      $$('.tab').forEach((t) => t.classList.remove('active'));
-      $('#tab-' + btn.dataset.tab).classList.add('active');
-    });
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
   });
 
   $('#monthPicker').addEventListener('change', (e) => { state.month = e.target.value; refreshAll(); });
